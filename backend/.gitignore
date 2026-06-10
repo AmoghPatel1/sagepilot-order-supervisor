@@ -1,0 +1,15 @@
+# env files
+.env
+.env.*
+
+# virtualenv
+venv/
+.venv/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# logs
+*.log
