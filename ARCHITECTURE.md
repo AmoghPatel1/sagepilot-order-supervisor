@@ -86,9 +86,8 @@ major design decision and the tradeoffs that led to it.
 
 Temporal is the "correct" production answer for durable long-running workflows.
 However, it requires running a Temporal server (Go binary or Docker), configuring
-namespaces, and writing workflow code in their SDK. For a 2-day POC, that setup
-cost would consume Day 1 entirely — time better spent on the agent logic that is
-actually being evaluated.
+namespaces, and writing workflow code in their SDK. For this scope, that setup
+cost would consume Day 1 entirely — time better spent on the agent logic itself.
 
 The key insight is that DB state + a scheduler achieves the **same logical model**
 as Temporal's sleep/wake primitives:
@@ -99,7 +98,7 @@ as Temporal's sleep/wake primitives:
 
 The difference is failure handling. If the server crashes mid-agent-invocation
 in our system, the run stays in `running` status. Temporal would replay the
-workflow from the last checkpoint. For a POC demo, this tradeoff is explicit
+workflow from the last checkpoint. For a single-machine deployment, this tradeoff is explicit
 and acceptable — all state is in the database and survives restarts, only the
 in-flight LLM call is lost.
 
@@ -178,7 +177,7 @@ complete_run(reason, final_summary, key_actions, learnings)
 
 ### Why the agent cannot end its own run
 
-The spec explicitly requires system-owned completion rules. `complete_run` signals
+System-owned completion rules are required. `complete_run` signals
 intent but completion also triggers on:
 - Manual termination from the UI
 - A configured max run age (extensible)
