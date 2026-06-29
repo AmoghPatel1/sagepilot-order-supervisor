@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-950 text-gray-100 p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">Sagepilot Order Supervisor</h1>
+        <h1 className="text-3xl font-bold mb-2">AI Order Supervisor</h1>
         <p className="text-gray-400 mb-8">AI-powered order lifecycle management</p>
 
         <div className="grid grid-cols-2 gap-4">

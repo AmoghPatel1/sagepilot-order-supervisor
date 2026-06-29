@@ -12,7 +12,7 @@ async def lifespan(app: FastAPI):
     # Stop scheduler on app shutdown
     stop_scheduler()
 
-app = FastAPI(title="Sagepilot Order Supervisor", lifespan=lifespan)
+app = FastAPI(title="AI Order Supervisor", lifespan=lifespan)
 
 # Allow Next.js frontend to call the API
 app.add_middleware(
