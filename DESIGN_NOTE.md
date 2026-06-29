@@ -2,32 +2,19 @@
 
 ## The Core Design Challenge
 
-The assignment asks for a system that does two things that pull in opposite directions:
-it must be simple enough to build in a few days, and it must be designed well enough
-to defend every decision under scrutiny. This note explains the reasoning behind each
-major decision — not what was built, but why.
+This system does two things that pull in opposite directions: it must be simple enough to run on minimal infrastructure, and it must be designed well enough that every decision can be defended under scrutiny. This note explains the reasoning behind each major decision — not what was built, but why.
 
 ---
 
 ## Orchestration: Why DB State + APScheduler
 
-The spec explicitly leaves orchestration open. The real options were Temporal,
-a queue-based system (Redis + Celery), or database state with a scheduler.
+Orchestration was an open choice. The real options were Temporal, a queue-based system (Redis + Celery), or database state with a scheduler.
 
-**Temporal** is the correct production answer for this problem. It provides durable
-execution, built-in sleep/wake primitives (`workflow.sleep()`), automatic crash
-recovery through event sourcing and replay, and a visibility UI that gives operators
-full execution history. At a company processing millions of events per day, Temporal
-is not optional — it is the only approach that handles failure, scale, and observability
-together.
+**Temporal** is the correct production answer for this problem. It provides durable execution, built-in sleep/wake primitives (`workflow.sleep()`), automatic crash recovery through event sourcing and replay, and a visibility UI that gives operators full execution history. At a company processing millions of events per day, Temporal is not optional — it is the only approach that handles failure, scale, and observability together.
 
-However, Temporal requires running a separate server process, configuring namespaces,
-and writing workflow code in its SDK. For a 2-4 day POC, that infrastructure cost
-would consume the first day entirely — time better spent demonstrating the actual
-agent logic being evaluated.
+However, Temporal requires running a separate server process, configuring namespaces, and writing workflow code in its SDK. For this scope, that infrastructure cost outweighs the benefit — time better spent on the agent logic itself.
 
-**The key insight** is that database state + a scheduler achieves the same logical
-model as Temporal's primitives for a single-machine POC:
+**The key insight** is that database state + a scheduler achieves the same logical model as Temporal's primitives for a single-machine deployment:
 
 | Temporal concept | This implementation |
 |---|---|
@@ -37,17 +24,9 @@ model as Temporal's primitives for a single-machine POC:
 | Workflow state | `state_summary` + `activity_log` in PostgreSQL |
 | Worker crash recovery | Background job resets stuck `running` runs to `sleeping` |
 
-The difference is failure handling under load. Temporal replays from a checkpoint;
-this system relies on a crash recovery job and loses the in-flight LLM call. For
-a POC demo running one order at a time, this is an acceptable and explicit tradeoff.
-For production at scale, Temporal is the answer — and I can articulate that migration
-path clearly.
+The difference is failure handling under load. Temporal replays from a checkpoint; this system relies on a crash recovery job and loses the in-flight LLM call. For a single-machine deployment running one order at a time, this is an acceptable and explicit tradeoff. For production at scale, Temporal is the answer — and the migration path is a direct mapping.
 
-**Why not Redis + Celery?** Celery is designed for short, discrete tasks. An agent
-run is long-lived and stateful — it needs to read history, update state, and schedule
-its own next wake-up. That state lives outside the task regardless, which means Celery
-adds infrastructure without simplifying the problem. The queue is not the hard part;
-the state management is.
+**Why not Redis + Celery?** Celery is designed for short, discrete tasks. An agent run is long-lived and stateful — it needs to read history, update state, and schedule its own next wake-up. That state lives outside the task regardless, which means Celery adds infrastructure without simplifying the problem. The queue is not the hard part; the state management is.
 
 ---
 
@@ -90,12 +69,10 @@ The migration path to sub-agents is clear: extract tool subsets into specialized
 agent functions, add a router that classifies order state and delegates. That's
 an extension, not a rewrite.
 
-**Why business actions are stubs** — the spec explicitly says real integrations
-are out of scope. More importantly, stubbing the execution layer is the right
-architectural choice regardless of scope. The agent's decision layer (what to do)
-is cleanly separated from the execution layer (actually doing it). Swapping in
-real integrations means changing only the tool implementation functions, not the
-agent logic or prompt.
+**Why business actions are stubs** — the execution layer is intentionally separated
+from the decision layer. The agent decides what to do; the tool implementation
+does it. Real integrations mean changing only the tool implementation functions,
+not the agent logic or prompt.
 
 ---
 
@@ -146,12 +123,9 @@ and new event types require a code change to classify correctly. The default-to-
 policy is a deliberate choice — missing a critical event is more costly than an
 unnecessary agent wake.
 
-The spec mentions agent-generated wake-up guidance as a good-to-have. This would
-make the classifier order-aware — the agent writes guidance after each cycle
-(e.g. "for this order, treat shipment_delayed as non-urgent") that the classifier
-reads on the next event. This was not implemented because the static classifier
-covers all demo event types and the added complexity of storing and applying
-per-run guidance wasn't justified within the scope.
+Per-run classifier guidance (where the agent writes event-urgency hints after
+each cycle) was considered but not implemented — the static classifier covers
+all current event types and the added complexity wasn't justified at this scope.
 
 ---
 
@@ -176,8 +150,7 @@ executing — not implemented here, but the correct production fix.
 
 ## What I Would Do Differently at Production Scale
 
-The spec mentions Sagepilot processes a high volume of events per day. At that
-scale, several things break in this design:
+At production scale with high event volume, several things break in this design:
 
 **Temporal replaces APScheduler entirely.** The DB polling pattern works at low
 volume but cannot handle the throughput or provide the durability guarantees
@@ -205,10 +178,10 @@ orchestrated by a routing layer, is the right architecture at scale.
 
 | Decision | Chosen | Alternative | Why chosen |
 |---|---|---|---|
-| Orchestration | DB + APScheduler | Temporal | Setup cost vs. correctness at POC scope |
+| Orchestration | DB + APScheduler | Temporal | Setup cost vs. correctness at this scope |
 | LLM framework | Direct Anthropic SDK | LangChain | Transparency and debuggability |
 | Agent structure | Single flat agent | Sub-agent hierarchy | Complexity not justified at this action space size |
 | Memory format | Structured JSON | Free text | Enforces completeness, enables validation |
 | Event classifier | Pure Python rules | LLM call | Cost, latency, determinism |
-| Business actions | Stubs (DB writes only) | Real integrations | Out of scope; clean separation of decision vs execution |
+| Business actions | Stubs (DB writes only) | Real integrations | Clean separation of decision vs execution |
 | Crash recovery | Background scheduler job | Temporal replay | Compensating control for not using Temporal |
