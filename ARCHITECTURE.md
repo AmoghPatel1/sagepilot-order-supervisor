@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sagepilot Order Supervisor is a long-running AI agent system that monitors e-commerce
+AI Order Supervisor is a long-running AI agent system that monitors e-commerce
 orders from creation to completion. The core design challenge is not the AI itself —
 it is modeling a process that persists across hours, receives external events
 asynchronously, and resumes coherently after sleeping. This document explains every
