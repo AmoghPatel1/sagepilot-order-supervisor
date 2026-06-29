@@ -1,6 +1,6 @@
-# Sagepilot Order Supervisor
+# AI Order Supervisor
 
-A POC for a long-running AI supervisor that monitors e-commerce orders from creation to completion. The agent wakes on events, reasons about the order state, executes business actions, and sleeps until the next scheduled check or important event.
+AI Order Supervisor is a long-running AI agent that monitors e-commerce orders from creation to completion. The core challenge: building an AI system that persists coherently across hours of operation — waking on urgent events, maintaining structured memory between sleep cycles, reasoning about order health, and executing business actions — without a persistent process or heavyweight orchestration framework.
 
 ---
 
@@ -50,7 +50,7 @@ When an order is created, the system starts a long-running **run** for that orde
 ## Project Structure
 
 ```
-sagepilot-order-supervisor/
+ai-order-supervisor/
 ├── schema.sql                  # Run this in Supabase to create all tables
 ├── README.md
 ├── ARCHITECTURE.md
