@@ -383,7 +383,7 @@ the reasoning and tradeoffs behind each design decision.
 
 - **Scheduler granularity**: 30-second polling means wake-ups can be up to 30 seconds late. Fine for order supervision; not for real-time systems.
 - **Single-process**: APScheduler shares the FastAPI process. Under heavy load, agent invocations could slow API responses. A separate worker process would fix this.
-- **No authentication**: this is a single-tenant POC with no auth layer.
+- **No authentication**: this is a single-tenant system with no auth layer.
 - **Context compaction is naive**: the 20-entry sliding window works for demos but would need smarter summarization for orders with hundreds of events.
 - **No idempotency on event injection**: duplicate events are possible if a client retries. An `event_id` deduplication check on `activity_log` would fix this.
 - **Race condition on concurrent events**: two urgent events arriving simultaneously for the same run can trigger concurrent agent invocations. No locking exists at the run level.
